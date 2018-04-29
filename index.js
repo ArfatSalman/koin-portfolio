@@ -1,22 +1,24 @@
 const fetch = require('node-fetch');
 const jclrz = require('json-colorz');
+const _ = require('lodash');
+
 const sendMail = require('./sendMail');
 const time = require('./time');
+const List = require('./List');
 
 process
   .on('unhandledRejection', async (reason, p) => {
     console.error(reason, 'Unhandled Rejection at Promise', p);
-    await sendMail({ subject: `${reason} 'Unhandled Rejection at Promise' ${p}` });
+    process.exit();
   })
   .on('uncaughtException', async err => {
-    await sendMail({ subject: `${err}` });
+    sendMail({ subject: `${err}` }).then((info) => console.log(info));
     throw err;
   });
 
 let runningTick = 1; // minutes
-const INTERVAL_PER_MINUTE = 2;
+const INTERVAL_PER_MINUTE = 1;
 
-const normalisedTimeQuantas = [2, 10, 20, 30, 60, 90, 120, 180];
 const timeKeys = {
   TWO: { timeQuanta: 2, name: 'two' },
   TEN: { timeQuanta: 10, name: 'ten' },
@@ -28,164 +30,178 @@ const timeKeys = {
   THREE_HOURS: { timeQuanta: 180, name: 'threeHours' }
 };
 
+const constants = {
+  KOINEX_HIGHEST_BID: 'highest_bid',
+  KOINEX_LOWEST_ASK: 'lowest_ask',
+  KOINEX_LAST_TRADED_PRICE: 'last_traded_price'
+};
+
+const portfolioBase = {
+  highestBidPrices: { },
+  lowestAskPrices: { },
+  lastTradedPrices: new List(15),
+  tolerance: 0,
+  emailSentInLastThirtyMins: false
+}
 
 const portfolio = {
-  ETH: {
-    quantity: 0.25000,
-    boughtAt: 40401,
-    highestBidPrices: { },
-    lowestAskPrices: { },
+  ETH: { 
+    ..._.cloneDeep(portfolioBase),
     tolerance: 1000
   },
   REQ: {
-    highestBidPrices: { },
-    lowestAskPrices: { },
+    ..._.cloneDeep(portfolioBase),
+    tolerance: 1
+  },
+  EOS: {
+    ..._.cloneDeep(portfolioBase),
+    tolerance: 100    
+  },
+  TRX: {
+    ..._.cloneDeep(portfolioBase),
     tolerance: 1
   }
 };
 
-// const checkPricesHaveFallenOf = ({ coin, currentHighestBidPrice,  lastHighestBidPrice, duration }) => {
-//   const bidPriceDifference = currentHighestBidPrice - lastHighestBidPrice;
-//   console.log(`bidPriceDifference => ${bidPriceDifference}`);
-//   const tolerance = portfolio[coin].tolerance;
-
-//   // If currentBidPrice has fallen by more than tolerance level.
-//   // bidPriceDifference < 0 because the price should be negative for 
-//   // falling
-//   // check whether prices have fallen by tolerance in last X minutes/hours
-//   const highestBidPricesHaveFallen = bidPriceDifference < 0 && Math.abs(bidPriceDifference) >= tolerance;
-//   console.log(`highestBidPricesHaveFallen ${highestBidPricesHaveFallen}`);
-
-//   if (highestBidPricesHaveFallen) {
-//     sendMail({ subject: `${coin} Prices fell by ${bidPriceDifference} in ${duration}` })
-//     .then((mailInfo) => {
-//       console.log(mailInfo);
-//     })
-//   }
-// }
-
-const updatePortfolio = ({ coin, currentHighestBidPrice, currentLowestAskPrice }) => {
+const updatePortfolio = ({ coin, coinDetails }) => {
 
   const normalisedTime = Object.values(timeKeys).map(({timeQuanta, name}) => ({ name, timeQuanta: timeQuanta / INTERVAL_PER_MINUTE }));
   const reverseSorted = normalisedTime.sort((a, b) => b.timeQuanta - a.timeQuanta);
-  reverseSorted.forEach(({timeQuanta, name}) => {
-    if (runningTick % timeQuanta === 0) {
-      const bidPrices = portfolio[coin].highestBidPrices;
-      bidPrices[name] = currentHighestBidPrice;
+  const toUpdateObj = reverseSorted.find(({timeQuanta, _}) => runningTick % timeQuanta === 0);
 
-      const askPrices = portfolio[coin].lowestAskPrices;
-      askPrices[name] = currentLowestAskPrice;
+  
+  if (toUpdateObj) {
+    const { name } = toUpdateObj;
+  
+    portfolio[coin].highestBidPrices[name] = coinDetails[constants.KOINEX_HIGHEST_BID];
+    portfolio[coin].lowestAskPrices[name] = coinDetails[constants.KOINEX_LOWEST_ASK];
+    portfolio[coin].lastTradedPrices.insert(coinDetails[constants.KOINEX_LAST_TRADED_PRICE]);
+  }
+};
+
+const isPositive = num => num > 0;
+
+const checkSlopeDirection = (coin, prices) => {
+  const difference = [];
+  for (let i = 0; i < prices.length - 1; i++ ) {
+    difference.push(prices[i] - prices[i+1]);
+  }
+  const diffWithNoZeroes = difference.filter((el) => el !== 0);
+  
+  if (diffWithNoZeroes.length > 10) {
+    let directionChange = 0;
+    let initialDirection = isPositive(diffWithNoZeroes[0]);
+    diffWithNoZeroes.forEach((el) => {
+      // direction change
+      const currentDirection = isPositive(el)
+      if (currentDirection !== initialDirection) {
+        initialDirection = currentDirection;
+        directionChange = directionChange + 1;
+      }
+    });
+    if (directionChange === 0) {
+      // Either the price is rising or falling
+      const absDiff = diffWithNoZeroes.map(el => Math.abs(el));
+      const maxDiff = Math.max(...absDiff);
+
+      console.log(`${coin} did not change direction. Max deviation is ${maxDiff}`);
     }
-  });
 
-  // const highestBidPrices = portfolio[coin].highestBidPrices;
-
-  // if (runningTick % 180 === 0) {
-  //   highestBidPrices[timeMarkers.THREE_HOURS] = currentHighestBidPrice;
-  // } else if (runningTick % 120 === 0) {
-  //   highestBidPrices[timeMarkers.TWO_HOURS] = currentHighestBidPrice;
-  // } else if (runningTick % 30 === 0) {
-  //   highestBidPrices[timeMarkers.THIRTY] = currentHighestBidPrice;
-  // } else if (runningTick % 60 === 0) {
-  //   highestBidPrices[timeMarkers.ONE_HOUR] = currentHighestBidPrice;
-  // } else if (runningTick % 10 === 0) {
-  //   highestBidPrices[timeMarkers.TEN] = currentHighestBidPrice;
-  // } else if (runningTick % 2 === 0) {
-  //   highestBidPrices[timeMarkers.TWO] = currentHighestBidPrice;
-  // }
+    // only one direction change
+    if (directionChange === 1) {
+      sendMail({ subject: `${coin} changed direction once.` }).then((info) => console.log(info));
+    }
+  } 
+  // console.log(difference);
 }
 
+
 setInterval(async () => {
-  const result = await fetch('https://koinex.in/api/ticker');
-  
-  const dataStats = JSON.parse(await result.text())['stats'];
-
-  // ===== For falling prices 
+  const result = await fetch('https://koinex.in/api/ticker');  
+  const dataStats = JSON.parse(await result.text())['stats']['inr'];
   for (const [coin, valueObj] of Object.entries(portfolio)) {
-    // The max price buyers are ready to pay    
-    const currentHighestBidPrice = dataStats[coin]['highest_bid'];
-    // console.log(coin, valueObj, currentHighestBidPrice);
-
-    const priceFallDetails = Object.entries(valueObj.highestBidPrices).find(([ time, lastHighestBidPrice ]) => {
-      // console.log(time, lastHighestBidPrice);
-      const bidPriceDifference = currentHighestBidPrice - lastHighestBidPrice;
-      const tolerance = valueObj.tolerance;
-
-      const highestBidPricesHaveFallen = bidPriceDifference < 0 && Math.abs(bidPriceDifference) >= tolerance;
-      return highestBidPricesHaveFallen;
-    });
-
-    if (priceFallDetails) {
-      console.log(priceFallDetails);
-      const [duration, price] = priceFallDetails;
-      sendMail({ subject: `${coin} Prices fell by ${price - currentHighestBidPrice} in ${duration}` })
-      .then((info) => jclrz(info));
-    }
-
-    // ============= For rising prices
-
-    // The min price sellers are selling at
-    const currentLowestAskPrice = dataStats[coin]['lowest_ask']
-    const priceRiseDetails = Object.entries(valueObj.lowestAskPrices).find(([time, lastLowestAskPrice]) => {
-      // console.log(time, lastHighestBidPrice);      
-      const priceDifference = currentLowestAskPrice - lastLowestAskPrice;
-      const tolerance = valueObj.tolerance;      
-
-      const priceHasRisen = priceDifference > 0 && priceDifference >= tolerance;
-      return priceHasRisen;
-    });
-
-    if (priceRiseDetails) {
-      // console.log(priceRiseDetails);
-      const [duration, price] = priceRiseDetails;
-      sendMail({ subject: `${coin} Prices fell by ${price - currentLowestAskPrice} in ${duration}` })
-      .then((info) => jclrz(info));      
-    }
-
-    // Update the per coin portfolio
-    updatePortfolio({ coin, currentHighestBidPrice, currentLowestAskPrice });
+    checkSlopeDirection(coin, valueObj.lastTradedPrices.array);
+    updatePortfolio({ coin, coinDetails: dataStats[coin] });
   }
-
-
-
-
-  // const coin = 'ETH';
-
-  // // The max price buyers are ready to pay
-  // const currentHighestBidPrice = dataStats[coin]['highest_bid'];
-  // console.log(`currentHighestBidPrice ${currentHighestBidPrice}`);
-  // const lastHighestBidPrices = portfolio[coin].highestBidPrices;
-
-  // for (const [time, price] of Object.entries(lastHighestBidPrices)) {
-  //   console.log(`Running loop on [${time}, ${price}]`);
-  //   checkPricesHaveFallenOf({
-  //     coin,
-  //     currentHighestBidPrice,
-  //     lastHighestBidPrice: price,
-  //     duration: time
-  //   });
-  // }
-    // const bidPriceDifference = currentHighestBidPrice - lastHighestBidPrice;
-    // const tolerance = portfolio[coin].tolerance;
-
-    // // If currentBidPrice has fallen by more than tolerance level
-    // // bidPriceDifference < 0 because the price should be negative for 
-    // // falling
-    // // check whether prices have fallen by tolerance in last 10 minutes
-    // const highestBidPricesHaveFallen = bidPriceDifference < 0 && Math.abs(bidPriceDifference) >= tolerance;
-    // if (highestBidPricesHaveFallen) {
-    //   await sendMail({ subject: `${coin} Prices fell by ${bidPriceDifference}` })
-    // }
-
-  // Update Portfolio prices
-  // updatePortfolioHigestBidPrices(coin, currentHighestBidPrice);
-
-  // update running tick
   runningTick = runningTick + 1;
+  jclrz({runningTick});
+}, time(30).milliseconds);
 
-  jclrz(portfolio);
-}, time(INTERVAL_PER_MINUTE).minutes);
+// setInterval(async () => {
+//   const result = await fetch('https://koinex.in/api/ticker');
+//   const dataStats = JSON.parse(await result.text())['stats']['inr'];
 
+//   // ===== For falling prices 
+//   for (const [coin, valueObj] of Object.entries(portfolio)) {
+//     // The max price buyers are ready to pay    
+//     const currentHighestBidPrice = dataStats[coin]['highest_bid'];
+//     jclrz({ currentHighestBidPrice });
+//     // console.log(coin, valueObj, currentHighestBidPrice);
+
+//     const priceFallDetails = Object.entries(valueObj.highestBidPrices).find(([ time, lastHighestBidPrice ]) => {
+//       // console.log(time, lastHighestBidPrice);
+//       const bidPriceDifference = currentHighestBidPrice - lastHighestBidPrice;
+//       const tolerance = valueObj.tolerance;
+
+//       const highestBidPricesHaveFallen = bidPriceDifference < 0 && Math.abs(bidPriceDifference) >= tolerance;
+//       return highestBidPricesHaveFallen;
+//     });
+
+//     if (priceFallDetails && !valueObj.emailSentInLastThirtyMins) {
+//       console.log(priceFallDetails);
+//       const [duration, price] = priceFallDetails;
+      
+//       sendMail({ subject: `${coin} Prices fell by ${price - currentHighestBidPrice} in ${duration}` })
+//       .then((info) => {
+//         jclrz(info);
+//         valueObj.emailSentInLastThirtyMins = true;
+//       })
+//       .catch((err) => {
+//         console.log(err);
+//       });
+//     }
+
+//     // ============= For rising prices
+
+//     // The min price sellers are selling at
+//     const currentLowestAskPrice = dataStats[coin]['lowest_ask'];
+//     jclrz({ currentLowestAskPrice });
+//     const priceRiseDetails = Object.entries(valueObj.lowestAskPrices).find(([time, lastLowestAskPrice]) => {
+//       // console.log(time, lastHighestBidPrice);      
+//       const priceDifference = currentLowestAskPrice - lastLowestAskPrice;
+//       const tolerance = valueObj.tolerance;      
+
+//       const priceHasRisen = priceDifference > 0 && priceDifference >= tolerance;
+//       return priceHasRisen;
+//     });
+
+//     if (priceRiseDetails && !valueObj.emailSentInLastThirtyMins) {
+//       // console.log(priceRiseDetails);
+//       const [duration, price] = priceRiseDetails;
+//       sendMail({ subject: `${coin} Prices rose by ${price - currentLowestAskPrice} in ${duration}` })
+//       .then((info) => {
+//         jclrz(info);
+//         valueObj.emailSentInLastThirtyMins = true;
+//       }).catch( err => {
+//         console.log(err);
+//       });      
+//     }
+
+//     // Update the per coin portfolio
+//     updatePortfolio({ coin, coinDetails: dataStats[coin] });
+//   }
+
+//   runningTick = runningTick + 1;
+
+//   jclrz(portfolio);
+// }, time(INTERVAL_PER_MINUTE).minutes);
+
+
+setInterval(() => {
+  for (const [_, valueObj] of Object.entries(portfolio)) {
+    valueObj.emailSentInLastThirtyMins = false;
+  }
+}, time(30).minutes);
 
 // For Heroku
 // setInterval(() => {

@@ -4,10 +4,12 @@
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
+    "circular-queue": "^0.0.2",
     "dotenv": "^5.0.1",
     "env-cmd": "^8.0.1",
     "ioredis": "^3.2.2",
     "json-colorz": "^0.2.7",
+    "lodash": "^4.17.10",
     "node-fetch": "^2.1.2",
     "node-json-color-stringify": "^1.1.0",
     "nodemailer": "^4.6.4",
