@@ -35,11 +35,3 @@ const time = (timeQuanta, configObj) => {
 }
 
 module.exports = time;
-
-time('5');
-
-time('5ms').hours;
-
-const toMS = Time({ out: 'ms'});
-
-toMS(5).seconds // 5000

@@ -1,4 +1,4 @@
-const CircularQueue = require('circular-queue');
+
 const puppeteer = require('puppeteer');
 
 // process.on('click', () => {
@@ -35,33 +35,8 @@ puppeteer.launch({ headless: false, slowMo: 100 }).then(async browser => {
 });
 
 
-const obj = { a: 'a', b: 'b' };
+const myProimse = new Promise((resolve, reject) => {
+  throw new Error('Error was thrown.');
+});
 
-const aa = (opts) => { const options = { ...obj, ...opts}; console.log({ options  })}
-
-aa({ a: 'c'})
-
-import Redis from 'ioredis';
-const r = new Redis();
-
-console.log(r);
-
-const x = [9, 8, 7, 6, 5, 4, 3, 2, 1];
-const y = [44000.00, 43504.00, 43505.00, 43650.00, 43700.00, 43702.00, 43701.00, 43702.00, 43702.00]
-
-const slope = (x1, y1, x2, y2) => (y2 - y1) / (x2 - x1)
-
-for (let i = 0; i < x.length - 1; i++) {
-
-    console.log(slope(x[i], y[i], x[i+1], y[i+1]));
-}
-
-const a = new CircularQueue(3);
-
-a.offer(1)
-a.offer(2)
-a.offer(3)
-a.offer(4)
-
-
-console.log(a)
+myProimse.catch(() => console.log('error'));
