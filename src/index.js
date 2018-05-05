@@ -1,7 +1,7 @@
 /* eslint-disable no-restricted-syntax */
 const express = require('express');
 const jclrz = require('json-colorz');
-const jsonFormat = require('json-format');
+const jsonFormat = require('prettyjson');
 
 const { INTERVAL_PER_MINUTE, PORT } = require('./constants');
 const portfolio = require('./Portfolio');
@@ -22,6 +22,8 @@ process
   });
 
 const app = express();
+app.set('json spaces', 2);
+
 let runningTick = 1; // minutes
 
 // Stategy One
@@ -43,11 +45,13 @@ app.get('/', (req, res) => {
 });
 
 app.get('/portfolio', (req, res) => {
-  res.send(jsonFormat(portfolio));
+  res.header('Content-Type', 'application/json');
+  res.send(JSON.stringify(portfolio, null, 2));
 });
 
 app.get('/koin/:koinID', (req, res) => {
-  res.send(jsonFormat(portfolio[req.params.koinID]));
+  res.header('Content-Type', 'application/json');
+  res.send(JSON.stringify(portfolio[req.params.koinID], null, 2));
 });
 
 const server = app.listen(PORT || 8080, () => {

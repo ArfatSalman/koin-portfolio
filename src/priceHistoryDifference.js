@@ -43,7 +43,6 @@ const askPriceRisePredicate = ({ currentPrice, lastPrice, tolerance }) =>
 const askPriceChecker = ({ dataStats, coin, valueObj }) => {
   const currentPrice = get(dataStats, `${coin}.${KOINEX_PROPERTIES.LOWEST_ASK}`);
 
-  console.log(valueObj);
   const { tolerance } = valueObj;
   const priceRiseDetails = Object.entries(valueObj.lowestAskPrices).find(([, lastPrice]) =>
     askPriceRisePredicate({ currentPrice, lastPrice, tolerance}));
