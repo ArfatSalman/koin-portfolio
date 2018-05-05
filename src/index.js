@@ -72,4 +72,4 @@ setInterval(() => {
   fetch('https://koin-tracker.herokuapp.com/')
     .then(() => {})
     .catch(err => console.log(err));
-}, time(20).minutes);
+}, time(5).minutes);
