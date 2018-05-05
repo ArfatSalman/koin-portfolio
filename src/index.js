@@ -36,11 +36,12 @@ setInterval(async () => {
 }, time(INTERVAL_PER_MINUTE).minutes);
 
 app.get('/', (req, res) => {
-  const res = `
+  const response = `
     Running Successfully.
     Running Tick: ${runningTick};
   `;
-})
+  res.send(response);
+});
 
 app.get('/portfolio', (req, res) => {
   res.send(portfolio);
