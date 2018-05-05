@@ -1,8 +1,6 @@
 /* eslint-disable no-restricted-syntax */
 const express = require('express');
-const jclrz = require('json-colorz');
-const jsonFormat = require('prettyjson');
-
+const fetch = require('node-fetch');
 const { INTERVAL_PER_MINUTE, PORT } = require('./constants');
 const portfolio = require('./Portfolio');
 const slopePriceTracker = require('./trackPriceUsingSlope');
