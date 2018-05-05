@@ -1,15 +1,14 @@
 /* eslint-disable no-restricted-syntax */
-const { INTERVAL_PER_MINUTE } = require('./constants');
+const express = require('express');
+const jclrz = require('json-colorz');
+
+const { INTERVAL_PER_MINUTE, PORT } = require('./constants');
 const portfolio = require('./Portfolio');
 const slopePriceTracker = require('./trackPriceUsingSlope');
 const priceHistoryTracker = require('./priceHistoryDifference');
-
-const jclrz = require('json-colorz');
-
-
 const sendMail = require('./sendMail');
 const time = require('./time');
-
+const DB = require('./database');
 
 process
   .on('unhandledRejection', async (reason, p) => {
@@ -21,6 +20,7 @@ process
     throw err;
   });
 
+const app = express();
 let runningTick = 1; // minutes
 
 // Stategy One
@@ -36,13 +36,28 @@ setInterval(async () => {
 }, time(INTERVAL_PER_MINUTE).minutes);
 
 
-setInterval(() => {
-  for (const [, valueObj] of Object.entries(portfolio)) {
-    valueObj.emailSentInLastThirtyMins = false;
-  }
-}, time(30).minutes);
+app.get('/portfolio', (req, res) => {
+  res.send(portfolio);
+});
 
-// For Heroku
-setInterval(() => {
-  fetch('http://');
-}, time(20).minutes);
+app.get('/koin/:koinID', (req, res) => {
+  res.send(portfolio[req.params.koinID]);
+});
+
+const server = app.listen(PORT || 8080, () => {
+  const host = server.address().address;
+  const { port } = server.address();
+
+  console.log('App listening at http://%s:%s', host, port);
+});
+
+// setInterval(() => {
+//   for (const [, valueObj] of Object.entries(portfolio)) {
+//     valueObj.emailSentInLastThirtyMins = false;
+//   }
+// }, time(30).minutes);
+
+// // For Heroku
+// setInterval(() => {
+//   fetch('http://');
+// }, time(20).minutes);
