@@ -35,6 +35,12 @@ setInterval(async () => {
 
 }, time(INTERVAL_PER_MINUTE).minutes);
 
+app.get('/', (req, res) => {
+  const res = `
+    Running Successfully.
+    Running Tick: ${runningTick};
+  `;
+})
 
 app.get('/portfolio', (req, res) => {
   res.send(portfolio);
