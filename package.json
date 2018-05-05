@@ -8,6 +8,7 @@
     "dotenv": "^5.0.1",
     "express": "^4.16.3",
     "json-colorz": "^0.2.7",
+    "json-format": "^1.0.1",
     "lodash": "^4.17.10",
     "mongodb": "^3.0.7",
     "node-fetch": "^2.1.2",

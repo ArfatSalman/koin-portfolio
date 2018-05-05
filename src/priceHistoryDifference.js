@@ -24,7 +24,6 @@ const bidPriceChecker = ({ dataStats, coin, valueObj }) => {
     bidPriceFallPredicate({ currentPrice, lastPrice, tolerance }));
 
   if (priceFallDetails && !valueObj.emailSentInLastThirtyMins) {
-    console.log(priceFallDetails);
     const [duration, price] = priceFallDetails;
 
     sendMail({ subject: `${coin} Prices fell by ${price - currentPrice} in ${duration}` })
