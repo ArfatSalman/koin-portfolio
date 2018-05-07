@@ -1,13 +1,15 @@
 /* eslint-disable no-restricted-syntax */
 const express = require('express');
 const fetch = require('node-fetch');
-const { INTERVAL_PER_MINUTE, PORT } = require('./constants');
-const portfolio = require('./Portfolio');
-const slopePriceTracker = require('./trackPriceUsingSlope');
-const priceHistoryTracker = require('./priceHistoryDifference');
-const sendMail = require('./sendMail');
-const time = require('./time');
-const DB = require('./database');
+const path = require('path');
+
+const { INTERVAL_PER_MINUTE, PORT } = require('./src/constants');
+const portfolio = require('./src/Portfolio');
+const slopePriceTracker = require('./src/trackPriceUsingSlope');
+const priceHistoryTracker = require('./src/priceHistoryDifference');
+const sendMail = require('./src/sendMail');
+const time = require('./src/time');
+const DB = require('./src/database');
 
 process
   .on('unhandledRejection', async (reason, p) => {
@@ -20,7 +22,9 @@ process
   });
 
 const app = express();
-app.set('json spaces', 2);
+app.use(express.static(path.join(__dirname, 'public')))
+  .set('views', path.join(__dirname, 'views'))
+  .set('view engine', 'ejs');
 
 let runningTick = 1; // minutes
 
@@ -35,11 +39,14 @@ setInterval(async () => {
 }, time(INTERVAL_PER_MINUTE).minutes);
 
 app.get('/', (req, res) => {
-  const response = `
-    Running Successfully.
-    Running Tick: ${runningTick};
-  `;
-  res.send(response);
+  res.render('pages/index', {
+    runningTick,
+  });
+});
+
+app.post('/', async (req, res) => {
+  const result = await sendMail({ subject: 'Sample Mail' });
+  res.send(JSON.stringify(result, null, 2));
 });
 
 app.get('/portfolio', (req, res) => {

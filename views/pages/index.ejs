@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <% include ../partials/header.ejs %>
+</head>
+
+<body>
+
+  <% include ../partials/nav.ejs %>
+
+    <div class="container">
+        Running Tick <%= runningTick %>
+    </div>
+
+    <form method="POST">
+        Send Sample Email: <button type="submit">Send Sample Email</button>
+    </form>
+</body>
+</html>
