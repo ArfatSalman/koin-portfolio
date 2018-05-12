@@ -21,7 +21,7 @@ const deafultMailOptions = {
   from: 'arfatsalman78692@gmail.com', // sender address
   to: 'giney.paradise@gmail.com', // list of receivers
   subject: 'Price Update', // Subject line
-  html: '', // plain text body
+  content: '', // plain text body
 };
 
 module.exports = (options = {}) => new Promise((resolve, reject) => {

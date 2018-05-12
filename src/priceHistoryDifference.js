@@ -26,10 +26,16 @@ const bidPriceChecker = ({ dataStats, coin, valueObj }) => {
   if (priceFallDetails && !valueObj.emailSentInLastThirtyMins) {
     const [duration, price] = priceFallDetails;
 
-    sendMail({ subject: `${coin} Prices fell by ${price - currentPrice} in ${duration}` })
+    sendMail({
+      subject: `${coin} Bid Prices fell by ${price - currentPrice} in ${duration}`,
+      content: `Current Price - ${currentPrice} 
+        Price at time - ${price}
+      `,
+    })
       .then((info) => {
         jclrz(info);
         valueObj.emailSentInLastThirtyMins = true;
+        portfolio.resetBidPrices({ coin });
       })
       .catch((err) => {
         console.log(err);
@@ -45,15 +51,21 @@ const askPriceChecker = ({ dataStats, coin, valueObj }) => {
 
   const { tolerance } = valueObj;
   const priceRiseDetails = Object.entries(valueObj.lowestAskPrices).find(([, lastPrice]) =>
-    askPriceRisePredicate({ currentPrice, lastPrice, tolerance}));
+    askPriceRisePredicate({ currentPrice, lastPrice, tolerance }));
 
   if (priceRiseDetails && !valueObj.emailSentInLastThirtyMins) {
     // console.log(priceRiseDetails);
     const [duration, price] = priceRiseDetails;
-    sendMail({ subject: `${coin} Prices rose by ${price - currentPrice} in ${duration}` })
+    sendMail({
+      subject: `${coin} Ask Prices rose by ${price - currentPrice} in ${duration}`,
+      content: `Current Price - ${currentPrice} 
+        Price at time - ${price}
+      `,
+    })
       .then((info) => {
         jclrz(info);
         valueObj.emailSentInLastThirtyMins = true;
+        portfolio.resetAskPrices({ coin });
       })
       .catch(err => console.log(err));
   }

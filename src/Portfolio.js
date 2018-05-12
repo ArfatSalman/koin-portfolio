@@ -34,6 +34,7 @@ const portfolio = {
 function updateLastTradedPrice({ coin, lastTradedPrices }) {
   this[coin].lastTradedPrices.insert(lastTradedPrices);
 }
+
 function updatePortfolio({ coin, coinDetails, runningTick }) {
   const normalisedTime = Object.values(timeKeys).map(({ timeQuanta, name }) =>
     ({ name, timeQuanta: timeQuanta / INTERVAL_PER_MINUTE }));
@@ -49,14 +50,31 @@ function updatePortfolio({ coin, coinDetails, runningTick }) {
   }
 }
 
-Object.defineProperty(portfolio, 'updateLastTradedPrice', {
-  enumerable: false,
-  value: updateLastTradedPrice,
-});
+function resetBidPrices({ coin }) {
+  this[coin].highestBidPrices = {};
+}
 
-Object.defineProperty(portfolio, 'updatePortfolio', {
-  enumerable: false,
-  value: updatePortfolio,
+function resetAskPrices({ coin }) {
+  this[coin].lowestAskPrices = {};
+}
+
+Object.defineProperties(portfolio, {
+  updateLastTradedPrice: {
+    enumerable: false,
+    value: updateLastTradedPrice,
+  },
+  updatePortfolio: {
+    enumerable: false,
+    value: updatePortfolio,
+  },
+  resetBidPrices: {
+    enumerable: false,
+    value: resetBidPrices,
+  },
+  resetAskPrices: {
+    enumerable: false,
+    value: resetAskPrices,
+  },
 });
 
 module.exports = portfolio;
